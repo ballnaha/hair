@@ -1,44 +1,49 @@
 "use client";
 
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Moon, Sun, Scissors } from "lucide-react";
+import { Moon, Sun, Scissors, Sparkles } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 
 export function Header() {
-  const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
 
-  useEffect(() => setMounted(true), []);
-
-  if (!mounted) return null;
-
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between mx-auto px-4">
-        <div className="flex items-center gap-2">
-          <div className="bg-primary p-1.5 rounded-lg">
-            <Scissors className="h-6 w-6 text-primary-foreground" />
+    <header className="sticky top-0 z-50 w-full">
+      {/* gradient bar */}
+      <div className="relative bg-gradient-to-r from-rose-700 via-pink-600 to-rose-500 dark:from-rose-900 dark:via-pink-800 dark:to-rose-700">
+        {/* subtle shimmer overlay */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.15)_0%,_transparent_60%)] pointer-events-none" />
+
+        <div className="relative flex h-14 items-center justify-between px-4 max-w-screen-sm mx-auto">
+          {/* Logo */}
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm shadow-inner">
+              <Scissors className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <span className="text-lg font-bold tracking-tight text-white leading-none block">HairAI</span>
+              <span className="text-[10px] font-medium text-pink-100/80 tracking-widest uppercase leading-none block">Beauty Studio</span>
+            </div>
           </div>
-          <span className="text-xl font-bold tracking-tight">HairAI</span>
-        </div>
-        <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
-          <a href="#" className="hover:text-primary transition-colors">Styles</a>
-          <a href="#" className="hover:text-primary transition-colors">How it works</a>
-          <a href="#" className="hover:text-primary transition-colors">Pricing</a>
-        </nav>
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
+
+          {/* Tagline center (hidden on very small) */}
+          <div className="hidden sm:flex items-center gap-1.5 text-pink-100/80 text-xs font-medium">
+            <Sparkles className="h-3 w-3" />
+            AI Virtual Try-On
+          </div>
+
+          {/* Theme toggle */}
+          <button
+            type="button"
+            aria-label="Toggle theme"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition-colors text-white"
           >
-            {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button>
-          <Button>Get Started</Button>
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
         </div>
       </div>
+      {/* thin gold accent line */}
+      <div className="h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent" />
     </header>
   );
 }

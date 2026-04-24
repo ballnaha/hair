@@ -8,9 +8,10 @@ import {
   Check,
   Download,
   Palette,
-  Sparkles,
   RefreshCw,
   Loader2,
+  Clock,
+  Sparkles,
 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -173,85 +174,14 @@ async function downloadImageWithLabels(
   await downloadImage(imageUrl, filename);
 }
 
-function StyleCard({
-  style,
-  showLabel = true,
-  grayscale = false,
-  isSelected = false,
-}: {
-  style: StyleResult;
-  showLabel?: boolean;
-  grayscale?: boolean;
-  isSelected?: boolean;
-}) {
-  const displayImage = style.image ?? style.previewImage ?? style.referenceImage;
-
-  return (
-    <div className="flex flex-col items-center gap-1.5">
-      <div
-        className={`relative aspect-[3/4] w-full rounded-xl overflow-hidden border ${
-          grayscale
-            ? "border-red-100/40 opacity-60"
-            : isSelected
-              ? "border-primary ring-1 ring-primary/20 shadow-sm"
-              : "border-muted/60 hover:border-primary/50 transition-colors"
-        }`}
-      >
-        {displayImage ? (
-          <Image
-            src={displayImage}
-            alt={style.name}
-            fill
-            className={`object-cover ${grayscale ? "grayscale" : ""}`}
-            sizes="(max-width: 768px) 33vw, 20vw"
-          />
-        ) : (
-          <div className="w-full h-full bg-muted/50 flex items-center justify-center">
-            <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
-          </div>
-        )}
-      </div>
-      {showLabel && (
-        <div className="text-center px-1">
-          <p className="text-xs font-semibold uppercase leading-tight tracking-wide">{style.name}</p>
-          {!style.image && <p className="text-[10px] text-muted-foreground">Preview reference</p>}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SectionHeader({
-  icon,
-  title,
-  subtitle,
-  color = "text-foreground",
-}: {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  color?: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 mb-3">
-      {icon}
-      <div>
-        <h3 className={`text-base font-semibold uppercase tracking-wide ${color}`}>{title}</h3>
-        <p className="text-sm text-muted-foreground">{subtitle}</p>
-      </div>
-    </div>
-  );
-}
-
-export function AnalysisDashboard({
-  data,
-  userImage,
-  onReset,
-}: {
+interface AnalysisDashboardProps {
   data: AnalysisData;
   userImage: string;
   onReset: () => void;
-}) {
+  generationTime?: number | null;
+}
+
+export function AnalysisDashboard({ data, userImage, onReset, generationTime }: AnalysisDashboardProps) {
   const [generated] = useState(data.generatedStyles);
   const [isGeneratingColors, setIsGeneratingColors] = useState(false);
   const [downloadingImageKey, setDownloadingImageKey] = useState<string | null>(null);
@@ -277,8 +207,6 @@ export function AnalysisDashboard({
     !!selectedStyle &&
     selectedColors.length > 0 &&
     selectedColors.every((color) => `${selectedStyleCacheScope}:${color.name}` in colorPreviewCache);
-  const colorCountLabel = selectedColors.length;
-
   const toggleColorSelection = (colorName: string) => {
     setSelectedColorNames((current) => {
       if (current.includes(colorName)) {
@@ -387,25 +315,29 @@ export function AnalysisDashboard({
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-[520px] flex-col gap-6 px-4 pt-5 pb-32 animate-in fade-in slide-in-from-bottom-6 duration-500">
-
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between">
+    <div className="mx-auto flex w-full max-w-[480px] flex-col gap-6 px-4 pt-6 pb-40 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      
+      {/* ── Top Result Header ── */}
+      <div className="flex items-center justify-between gap-4 px-1">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">AI Result</p>
-          <h2 className="text-2xl font-bold tracking-tight">Hair Preview</h2>
+          <h2 className="text-2xl font-black tracking-tight uppercase bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">Result</h2>
+          <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-primary/80">AI Beauty Transformation</p>
         </div>
         <button
           onClick={onReset}
-          className="flex items-center gap-1.5 rounded-full bg-muted px-3.5 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted/80 transition-colors"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-md transition-all hover:bg-secondary hover:scale-105 active:scale-95 shadow-sm border border-white/20"
         >
-          <RefreshCw className="h-3.5 w-3.5" /> เริ่มใหม่
+          <RefreshCw className="h-4 w-4" />
         </button>
       </div>
 
+
+      {/* ── Content Section ── */}
+      <div className="space-y-8">
+
       {/* ── STEP 1: Choose a style ── */}
       {generated?.selected && generated.selected.length > 0 && (
-        <section className="space-y-4">
+        <section className="space-y-4 rounded-[30px] border border-border/60 bg-card/70 p-4 sm:p-5 dark:bg-card/45">
           {/* step label */}
           <div className="flex items-center gap-3">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">1</span>
@@ -416,7 +348,7 @@ export function AnalysisDashboard({
           </div>
 
           {/* style cards row: original + generated */}
-          <div className={`grid gap-2.5 ${generated.selected.length === 1 ? "grid-cols-2" : generated.selected.length === 2 ? "grid-cols-3" : "grid-cols-4"}`}>
+          <div className="grid grid-cols-2 gap-3">
             {/* Original */}
             <div className="flex flex-col gap-1.5">
               <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-muted/30 ring-1 ring-muted/60">
@@ -490,48 +422,86 @@ export function AnalysisDashboard({
         </section>
       )}
 
-      {/* ── STEP 2: Hair Color ── */}
-      <section className="space-y-4">
-        {/* step label */}
-        <div className="flex items-center gap-3">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white">2</span>
-          <div>
-            <p className="text-base font-bold leading-tight">จำลองสีผม</p>
-            <p className="text-xs text-muted-foreground">เลือกสีแล้วให้ AI ใส่สีบนทรงที่เลือก</p>
-          </div>
-        </div>
-
-        {selectedStyle ? (
-          <div className="space-y-4">
-            {/* Selected style hero */}
-            <div className="relative overflow-hidden rounded-3xl bg-muted/30">
-              <div className="relative aspect-[16/9] w-full">
-                {selectedStylePreview ? (
-                  <Image
-                    src={selectedStylePreview}
-                    alt={selectedStyle.name}
-                    fill
-                    className="object-cover object-top"
-                    quality={95}
-                    sizes="(max-width: 768px) 100vw, 520px"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-muted/50">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      {/* ── New Preview Area (Moved from top) ── */}
+      <div className="relative px-1">
+        <div className="group relative aspect-[3/4] w-full overflow-hidden rounded-[40px] bg-muted/20 shadow-xl ring-1 ring-black/5 dark:bg-muted/5">
+          {selectedStylePreview ? (
+            <Image
+              src={selectedStylePreview}
+              alt={selectedStyle?.name || "Selected style"}
+              fill
+              className="object-cover transition-transform duration-700 hover:scale-105"
+              priority
+              sizes="480px"
+              quality={100}
+            />
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground">
+              <div className="h-12 w-12 rounded-full bg-muted/30 flex items-center justify-center">
+                <Sparkles className="h-6 w-6 text-muted-foreground/40" />
+              </div>
+              <p className="text-sm">เลือกทรงผมด้านบนเพื่อดูรูปขยาย</p>
+            </div>
+          )}
+          
+          {selectedStylePreview && (
+            <>
+              {/* subtle overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60" />
+              
+              {/* info & actions */}
+              <div className="absolute bottom-6 inset-x-6 flex items-end justify-between">
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-bold text-white tracking-tight">{selectedStyle?.name}</h2>
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-md uppercase tracking-wider border border-white/10">
+                      <Sparkles className="h-3 w-3" />
+                      AI Portrait
+                    </span>
                   </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                <div className="absolute bottom-0 inset-x-0 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/70 mb-0.5">ทรงที่เลือก</p>
-                  <p className="text-lg font-bold text-white leading-tight">{selectedStyle.name}</p>
+                </div>
+                <div className="flex gap-2">
+                  {selectedStyle?.image && (
+                    <button
+                      onClick={() => void handleDownloadImage(
+                        selectedStyle.image,
+                        `hero:${selectedStyle.id}`,
+                        `hairai-${sanitizeFilenamePart(selectedStyle.name)}.png`,
+                        { style: selectedStyle.name, color: "Original" }
+                      )}
+                      className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-white backdrop-blur-md border border-white/10 hover:bg-white/20 transition-all"
+                    >
+                      {downloadingImageKey === `hero:${selectedStyle.id}` ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <Download className="h-5 w-5" />
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
+            </>
+          )}
+        </div>
+        
+        {/* Generation Time Badge */}
+        {generationTime && (
+          <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-20">
+            <div className="flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-[10px] font-bold text-white/90 backdrop-blur-md border border-white/10 shadow-lg">
+              <Clock className="h-3 w-3" />
+              <span>AI Generation: {generationTime.toFixed(1)}s</span>
             </div>
+          </div>
+        )}
+      </div>
 
+      {/* ── STEP 2: Hair Color ── */}
+        {selectedStyle ? (
+          <div className="space-y-4">
             {/* Color picker */}
-            <div className="rounded-3xl border bg-card p-4 space-y-3">
+            <div className="rounded-3xl border bg-card p-4 space-y-3 dark:bg-background/40">
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">เลือกสีผม</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {data.recommendedColors.map((color) => {
                   const isSelected = selectedColorNames.includes(color.name);
                   return (
@@ -550,7 +520,7 @@ export function AnalysisDashboard({
                         style={{ backgroundColor: color.hex }}
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold leading-tight truncate">{color.name}</span>
+                        <span className="block text-sm font-semibold leading-tight">{color.name}</span>
                         <span className="block text-xs text-muted-foreground">{color.tone}</span>
                       </span>
                       <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-all ${
@@ -563,6 +533,7 @@ export function AnalysisDashboard({
                 })}
               </div>
             </div>
+
 
             {/* Generate button */}
             <Button
@@ -584,7 +555,7 @@ export function AnalysisDashboard({
             {selectedColors.length > 0 && (
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">ผลลัพธ์สีผม</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {selectedColors.map((color, i) => {
                     const previewImage = colorPreviews[color.name];
                     return (
@@ -621,7 +592,7 @@ export function AnalysisDashboard({
                               className="h-4 w-4 shrink-0 rounded-full border border-white/60 shadow"
                               style={{ backgroundColor: color.hex }}
                             />
-                            <span className="text-[11px] font-bold text-white leading-tight truncate">{color.name}</span>
+                            <span className="text-[11px] font-bold text-white leading-tight">{color.name}</span>
                           </div>
                           {/* download hover overlay */}
                           {previewImage && (
@@ -663,18 +634,6 @@ export function AnalysisDashboard({
             <p className="text-sm text-muted-foreground">เลือกทรงผมด้านบนก่อน<br />เพื่อเริ่มจำลองสีผม</p>
           </div>
         )}
-      </section>
-
-      {/* ── Sticky footer ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-rose-50/95 via-white/90 to-transparent dark:from-rose-950/95 dark:via-background/90 backdrop-blur-xl border-t border-rose-200/40 dark:border-rose-900/40">
-        <div className="mx-auto max-w-[520px]">
-          <Button
-            className="w-full h-13 rounded-2xl text-base font-bold bg-gradient-to-r from-rose-600 to-pink-500 hover:from-rose-700 hover:to-pink-600 text-white shadow-lg shadow-rose-400/30 border-0"
-            onClick={onReset}
-          >
-            <RefreshCw className="mr-2 h-4 w-4" /> ถ่ายรูปใหม่
-          </Button>
-        </div>
       </div>
     </div>
   );

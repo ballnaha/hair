@@ -129,6 +129,7 @@ export function TryOnSection() {
   const [postPhotoFlow, setPostPhotoFlow] = useState<PostPhotoFlow>("styles");
   const [gender, setGender] = useState<SalonStyleGender>("female");
   const [selectedStyleIds, setSelectedStyleIds] = useState<string[]>(getDefaultSelectedStyleIds("female"));
+  const [generationTime, setGenerationTime] = useState<number | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -147,7 +148,8 @@ export function TryOnSection() {
       }
 
       if (current.length >= MAX_HAIRSTYLE_PREVIEW_COUNT) {
-        toast.warning(`เลือกได้สูงสุด ${MAX_HAIRSTYLE_PREVIEW_COUNT} ทรง`, {
+        toast.info(`เลือกได้ครบ ${MAX_HAIRSTYLE_PREVIEW_COUNT} ทรงแล้ว`, {
+          description: "คุณสามารถกดเริ่มจำลองทรงผมได้ทันทีที่ปุ่มด้านล่าง",
           id: "hairstyle-max-limit",
         });
         return current;
@@ -234,7 +236,9 @@ export function TryOnSection() {
     }
 
     setIsProcessing(true);
-    setProcessingStep(`กำลังสร้างทรงที่ 1/${MAX_HAIRSTYLE_PREVIEW_COUNT}`);
+    setProcessingStep("กำลังเตรียมข้อมูลภาพ...");
+    setGenerationTime(null);
+    const startTime = Date.now();
     
     try {
       const recommendationResult = {
@@ -318,11 +322,13 @@ export function TryOnSection() {
         throw new Error(`AI สร้างทรงผมไม่ครบ ${MAX_HAIRSTYLE_PREVIEW_COUNT} ทรง กรุณาลองใหม่อีกครั้ง`);
       }
 
+      const duration = (Date.now() - startTime) / 1000;
+      setGenerationTime(duration);
       setAnalysisData({
-        ...recommendationResult,
+        recommendedColors: ALL_HAIR_COLOR_RECOMMENDATIONS,
         generatedStyles: {
           model: completedBatchData.model,
-          selected,
+          selected: completedBatchData.selected || [],
         },
       });
     } catch (error: unknown) {
@@ -344,7 +350,9 @@ export function TryOnSection() {
     } else {
       setIsProcessing(true);
       setProcessingStep("AI กำลังวิเคราะห์รูปและสร้างอินโฟกราฟิก...");
+      setGenerationTime(null);
     }
+    const startTime = Date.now();
 
     try {
       const response = await fetch("/api/analyze-graphic", {
@@ -367,6 +375,8 @@ export function TryOnSection() {
         throw new Error("AI did not return an analysis graphic");
       }
 
+      const duration = (Date.now() - startTime) / 1000;
+      setGenerationTime(duration);
       setAnalysisGraphicData({
         image: result.image,
         model: result.model,
@@ -420,24 +430,45 @@ export function TryOnSection() {
   }
 
   return (
-    <section className="flex flex-col gap-6 px-4 pt-4 pb-32 max-w-[480px] mx-auto min-h-screen">
-      {/* Step 1: Your Photo */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 px-1">
-          <div className="bg-primary/10 p-1.5 rounded-lg">
+    <section className="mx-auto flex min-h-screen w-full max-w-[480px] flex-col gap-6 px-4 pt-5 pb-36 sm:px-5 md:px-6 md:pt-6 md:pb-40">
+      <div className="flex items-start justify-between gap-3 rounded-[28px] border border-white/60 bg-white/75 px-4 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur sm:px-5 dark:border-white/8 dark:bg-white/5 dark:shadow-none">
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-primary/80">Hair Preview Studio</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-[1.9rem]">ออกแบบทรงผมให้เหมาะกับใบหน้าบนมือถือและแท็บเล็ต</h1>
+          <p className="max-w-[56ch] text-sm leading-6 text-muted-foreground sm:text-[15px]">
+            อัปโหลดรูปครั้งเดียว แล้วเลือกว่าจะให้ AI จำลองทรงผมหรือสร้างอินโฟกราฟิกวิเคราะห์เส้นผมใน flow ที่อ่านง่ายและกดใช้งานสะดวกบนจอสัมผัส
+          </p>
+        </div>
+        <div className="hidden md:flex items-center gap-2 rounded-full border border-primary/15 bg-primary/6 px-3.5 py-2 text-xs font-semibold text-primary">
+          <Sparkles className="h-4 w-4" />
+          Touch-first UI
+        </div>
+      </div>
+
+      <div className={`grid gap-6 ${selectedImage ? "grid-cols-1" : ""}`}>
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 px-1">
+            <div className="rounded-xl bg-primary/10 p-1.5">
             <Sparkles className="h-5 w-5 text-primary" />
           </div>
-          <h2 className="text-xl font-bold tracking-tight">1. ถ่ายรูปของคุณ</h2>
+            <div>
+              <h2 className="text-xl font-bold tracking-tight">1. ถ่ายรูปของคุณ</h2>
+              <p className="text-sm text-muted-foreground">ภาพแนวตั้งคมชัดจะช่วยให้ผลลัพธ์ AI สวยและแม่นยำขึ้น</p>
+            </div>
         </div>
         
-        <div className="relative aspect-[3/4] rounded-3xl border-2 border-muted-foreground/10 flex items-center justify-center bg-muted/20 overflow-hidden shadow-inner">
+          <div className="relative aspect-[3/4] overflow-hidden rounded-[32px] border border-white/65 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(250,244,246,0.84))] shadow-[0_18px_48px_rgba(15,23,42,0.08)] md:h-[460px] md:aspect-auto lg:h-auto lg:aspect-[3/4] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))]">
+            <div className="absolute inset-x-4 top-4 z-10 flex items-center justify-between rounded-full bg-black/35 px-3 py-2 text-[11px] font-semibold tracking-[0.18em] text-white/85 backdrop-blur-sm">
+              <span>Portrait Frame</span>
+              <span>3:4</span>
+            </div>
           {isCameraOpen ? (
             <div className="relative w-full h-full bg-black">
               <video 
                 ref={videoRef} 
                 autoPlay 
                 playsInline 
-                className="w-full h-full object-cover scale-x-[-1]" 
+                className="w-full h-full object-cover object-center scale-x-[-1]" 
               />
               <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
               <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/55 to-transparent pointer-events-none" />
@@ -469,33 +500,35 @@ export function TryOnSection() {
                 src={selectedImage}
                 alt="Uploaded"
                 fill
-                className="object-cover"
+                className="object-cover object-center"
               />
               <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
               <Button 
                 variant="secondary" 
-                className="absolute bottom-4 right-4 rounded-full shadow-lg backdrop-blur-md bg-background/80 hover:bg-background"
+                className="absolute bottom-4 right-4 rounded-full border border-white/55 bg-background/82 shadow-lg backdrop-blur-md hover:bg-background"
                 onClick={() => setSelectedImage(null)}
               >
                 <RefreshCw className="h-4 w-4 mr-2" /> ถ่ายใหม่
               </Button>
             </div>
           ) : (
-            <div className="text-center space-y-6 p-8 w-full">
-              <div className="mx-auto w-20 h-20 rounded-full bg-background shadow-sm border flex items-center justify-center">
+            <div className="flex h-full w-full flex-col justify-center gap-10 p-6 sm:p-8">
+              <div className="space-y-5 text-center">
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] border border-white/70 bg-background/92 shadow-sm dark:border-white/10 dark:bg-white/8">
                 <Camera className="h-8 w-8 text-primary" />
               </div>
-              <div className="space-y-1">
-                <p className="text-lg font-bold">เพิ่มรูปภาพของคุณ</p>
-                <p className="text-sm text-muted-foreground px-4">
+                <div className="space-y-1">
+                  <p className="text-lg font-bold">เพิ่มรูปภาพของคุณ</p>
+                  <p className="px-4 text-sm text-muted-foreground">
                   ถ่ายรูปหน้าตรงเพื่อให้ AI สร้างตัวอย่างทรงผมบนใบหน้าของคุณ
                 </p>
               </div>
-              <div className="flex flex-col gap-3 px-4">
-                <Button size="lg" className="h-14 w-full text-base rounded-2xl shadow-md gap-2" onClick={startCamera}>
+              </div>
+              <div className="grid gap-3 sm:px-4">
+                <Button size="lg" className="h-14 w-full rounded-2xl text-base shadow-md gap-2" onClick={startCamera}>
                   <Camera className="h-5 w-5" /> เปิดกล้องถ่ายรูป
                 </Button>
-                <Button variant="secondary" size="lg" className="h-14 w-full text-base rounded-2xl bg-background shadow-sm gap-2" onClick={() => fileInputRef.current?.click()}>
+                <Button variant="secondary" size="lg" className="h-14 w-full rounded-2xl border border-white/65 bg-background/85 text-base shadow-sm gap-2 dark:border-white/10 dark:bg-white/8" onClick={() => fileInputRef.current?.click()}>
                   <Upload className="h-5 w-5" /> เลือกจากคลังภาพ
                 </Button>
               </div>
@@ -515,25 +548,51 @@ export function TryOnSection() {
               <p className="text-sm text-muted-foreground">AI กำลังทำงาน อาจใช้เวลาประมาณ 20-30 วินาที</p>
             </div>
           )}
+          </div>
+
+          <div className="grid gap-3 rounded-[28px] border border-dashed border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground sm:grid-cols-3 dark:border-primary/16 dark:bg-primary/8">
+            <div>
+              <p className="font-semibold text-foreground">มุมกล้อง</p>
+              <p>มองตรง กลางเฟรม</p>
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">แสง</p>
+              <p>สว่างนุ่ม ไม่มีเงาแรง</p>
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">พื้นหลัง</p>
+              <p>เรียบเพื่อช่วยตัดผมชัดขึ้น</p>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <canvas ref={canvasRef} className="hidden" />
+        <canvas ref={canvasRef} className="hidden" />
 
-      {/* Step 2: Gender Selection & Analyze */}
-      {selectedImage && !isProcessing && (
-        <div className="animate-in fade-in slide-in-from-bottom-4 space-y-5">
+        {/* Step 2: Gender Selection & Analyze */}
+        {selectedImage && !isProcessing && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 space-y-5">
+
+            <div className="rounded-[32px] border border-white/60 bg-white/78 p-4 shadow-[0_14px_44px_rgba(15,23,42,0.06)] backdrop-blur sm:p-5 dark:border-white/8 dark:bg-white/5 dark:shadow-none">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/80">Workflow</p>
+                  <h3 className="text-xl font-bold tracking-tight">2. เลือกรูปแบบการใช้งาน</h3>
+                </div>
+                <div className="hidden sm:flex rounded-full bg-muted/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+                  เลือก flow ที่เหมาะกับงานของคุณ
+                </div>
+              </div>
 
           {/* Mode switcher */}
-          <div className="flex gap-2 p-1 rounded-2xl bg-muted/60">
+          <div className="flex gap-2 rounded-2xl bg-muted/60 p-1.5">
             {(["styles", "analysis"] as const).map((mode) => (
               <button
                 key={mode}
                 type="button"
                 onClick={() => setPostPhotoFlow(mode)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all duration-200 ${
                   postPhotoFlow === mode
-                    ? "bg-background text-foreground shadow-sm"
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -547,10 +606,10 @@ export function TryOnSection() {
           </div>
 
           {postPhotoFlow === "styles" && (
-            <div className="space-y-6 pb-28">
+            <div className="space-y-6 pb-28 pt-5">
 
               {/* Gender selection */}
-              <div className="space-y-3">
+              <div className="space-y-3 rounded-[28px] border border-border/60 bg-card/72 p-4 sm:p-5 dark:bg-card/45">
                 <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground px-1">
                   เลือกเพศ
                 </p>
@@ -595,7 +654,7 @@ export function TryOnSection() {
               </div>
 
               {/* Hairstyle catalog */}
-              <div className="space-y-3">
+              <div className="space-y-3 rounded-[28px] border border-border/60 bg-card/72 p-4 sm:p-5 dark:bg-card/45">
                 <div className="flex items-center justify-between px-1">
                   <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                     เลือกทรงผม
@@ -609,7 +668,7 @@ export function TryOnSection() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
                   {salonCatalog.map((style) => {
                     const isSelected = selectedStyleIds.includes(style.id);
                     return (
@@ -656,8 +715,8 @@ export function TryOnSection() {
           )}
 
           {postPhotoFlow === "analysis" && (
-            <div className="space-y-4 pb-28">
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/10 via-primary/5 to-background border p-6 shadow-sm">
+            <div className="space-y-4 pb-28 pt-5">
+              <div className="relative overflow-hidden rounded-[28px] border bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6 shadow-sm">
                 <div className="absolute -top-8 -right-8 h-36 w-36 rounded-full bg-primary/10 blur-2xl" />
                 <div className="relative">
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15">
@@ -678,12 +737,13 @@ export function TryOnSection() {
               </div>
             </div>
           )}
+            </div>
 
-          <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-rose-50/95 via-white/90 to-transparent dark:from-rose-950/95 dark:via-background/90 backdrop-blur-xl border-t border-rose-200/40 dark:border-rose-900/40">
-            <div className="max-w-[480px] mx-auto">
+          <div className="fixed bottom-3 left-1/2 z-50 w-[calc(100%-1rem)] -translate-x-1/2 rounded-[30px] border border-rose-200/55 bg-gradient-to-t from-rose-50/96 to-white/92 p-3 shadow-[0_16px_40px_rgba(244,63,94,0.14)] backdrop-blur-xl dark:border-rose-900/45 dark:bg-[linear-gradient(180deg,rgba(37,24,29,0.95),rgba(24,24,27,0.9))] sm:w-[calc(100%-1.5rem)] md:w-[min(440px,calc(100%-3rem))]">
+            <div className="mx-auto max-w-[440px]">
               {postPhotoFlow === "styles" ? (
                 <Button
-                  className="w-full h-14 text-base font-bold rounded-2xl shadow-lg shadow-rose-400/30 bg-gradient-to-r from-rose-600 to-pink-500 hover:from-rose-700 hover:to-pink-600 text-white border-0 disabled:opacity-50 disabled:from-muted disabled:to-muted disabled:text-muted-foreground disabled:shadow-none"
+                  className="h-14 w-full rounded-2xl border-0 bg-gradient-to-r from-rose-600 to-pink-500 text-base font-bold text-white shadow-lg shadow-rose-400/25 hover:from-rose-700 hover:to-pink-600 disabled:from-muted disabled:to-muted disabled:text-muted-foreground disabled:shadow-none"
                   onClick={handleAnalyze}
                   disabled={selectedStyleIds.length !== MAX_HAIRSTYLE_PREVIEW_COUNT}
                 >
@@ -694,7 +754,7 @@ export function TryOnSection() {
                 </Button>
               ) : (
                 <Button
-                  className="w-full h-14 text-base font-bold rounded-2xl shadow-lg shadow-rose-400/30 bg-gradient-to-r from-rose-600 to-pink-500 hover:from-rose-700 hover:to-pink-600 text-white border-0"
+                  className="h-14 w-full rounded-2xl border-0 bg-gradient-to-r from-rose-600 to-pink-500 text-base font-bold text-white shadow-lg shadow-rose-400/25 hover:from-rose-700 hover:to-pink-600"
                   onClick={() => { void handleAnalyzeGraphic(); }}
                 >
                   <Sparkles className="h-5 w-5 mr-2" /> ให้ AI วิเคราะห์จากรูปถ่ายนี้
@@ -702,8 +762,9 @@ export function TryOnSection() {
               )}
             </div>
           </div>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </section>
   );
 }

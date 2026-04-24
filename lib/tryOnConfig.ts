@@ -5,7 +5,9 @@ export interface HairColorRecommendation {
 }
 
 export const MAX_HAIRSTYLE_PREVIEW_COUNT = 1;
-export const MAX_HAIR_COLOR_PREVIEW_COUNT = 3;
+export const MAX_HAIR_COLOR_PREVIEW_COUNT = 1;
+export const MAX_UPLOAD_DIMENSION = 768; // Optimized for speed while keeping quality
+export const UPLOAD_IMAGE_QUALITY = 0.75; // Balanced for faster upload
 
 const DEFAULT_HAIR_COLOR_RECOMMENDATIONS: HairColorRecommendation[] = [
   { name: "Black", hex: "#1b1b1b", tone: "Cool" },

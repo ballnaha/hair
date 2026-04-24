@@ -60,8 +60,8 @@ interface BatchHairJob {
 }
 
 const BATCH_JOB_TTL_MS = 1000 * 60 * 60;
-const FAL_POLL_INTERVAL_MS = 300;
-const MAX_PARALLEL_STYLE_JOBS = 2;
+const FAL_POLL_INTERVAL_MS = 200;
+const MAX_PARALLEL_STYLE_JOBS = 4;
 
 const globalForBatchHair = globalThis as typeof globalThis & {
   __batchHairJobs?: Map<string, BatchHairJob>;

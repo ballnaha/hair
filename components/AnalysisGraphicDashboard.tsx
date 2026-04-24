@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw, RotateCcw, Loader2 } from "lucide-react";
+import { Download, RefreshCw, RotateCcw, Loader2, Clock } from "lucide-react";
 
 interface AnalysisGraphicDashboardProps {
   image: string;
@@ -10,6 +11,7 @@ interface AnalysisGraphicDashboardProps {
   onClearCacheAndReanalyze: () => Promise<void>;
   isReanalyzing?: boolean;
   onReset: () => void;
+  generationTime?: number | null;
 }
 
 function sanitizeFilenamePart(value: string) {
@@ -53,42 +55,74 @@ export function AnalysisGraphicDashboard({
   onClearCacheAndReanalyze,
   isReanalyzing = false,
   onReset,
+  generationTime,
 }: AnalysisGraphicDashboardProps) {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    try {
+      await downloadImage(image, `${sanitizeFilenamePart("hair-analysis")}.png`);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
   return (
-    <div className="flex flex-col gap-5 px-4 pt-4 pb-28 animate-in fade-in slide-in-from-bottom-8 duration-700">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto flex w-full max-w-[480px] flex-col gap-6 px-4 pt-6 pb-40 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      
+      {/* ── Top Header ── */}
+      <div className="flex items-center justify-between gap-4 px-1">
         <div>
-          <h2 className="text-xl font-black tracking-tight uppercase">Hair Analysis</h2>
-          <p className="text-xs text-muted-foreground">
-            AI-generated hair analysis infographic from the uploaded portrait{model ? ` using ${model}` : ""}
-          </p>
+          <h2 className="text-xl font-black tracking-tight uppercase bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">Analysis</h2>
+          <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-primary/80">AI Insight Graphic</p>
         </div>
         <button
           onClick={onReset}
-          className="text-primary flex items-center gap-1.5 text-xs font-bold bg-primary/10 px-3 py-1.5 rounded-full"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground backdrop-blur-md transition-all hover:bg-secondary hover:scale-105 active:scale-95 shadow-sm border border-white/20"
         >
-          <RefreshCw className="h-3 w-3" /> Start Over
+          <RefreshCw className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="rounded-3xl border bg-card p-3 shadow-md">
-        <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-muted/40">
+      {/* ── Graphic Card ── */}
+      <div className="relative overflow-hidden rounded-[36px] border border-white/20 bg-card shadow-[0_20px_50px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)] p-2">
+        <div className="relative aspect-[3/4] w-full overflow-hidden rounded-[30px] bg-muted/10">
           <Image
             src={image}
             alt="Hair analysis graphic"
             fill
-            className="object-contain"
-            sizes="(max-width: 768px) 100vw, 540px"
+            className="object-contain p-4"
+            priority
+            sizes="480px"
           />
+          {/* Generation Time Badge */}
+          {generationTime && (
+            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-20">
+              <div className="flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-[10px] font-bold text-white/90 backdrop-blur-md border border-white/10 shadow-lg">
+                <Clock className="h-3 w-3" />
+                <span>AI Analysis: {generationTime.toFixed(1)}s</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/90 backdrop-blur-xl border-t z-50">
-        <div className="max-w-[480px] mx-auto grid grid-cols-3 gap-3">
+      {/* ── Info & Actions ── */}
+      <div className="space-y-6">
+        <div className="rounded-3xl border border-dashed border-primary/20 bg-primary/5 p-6 text-center">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            วิเคราะห์รูปหน้าและสภาพเส้นผมของคุณเรียบร้อยแล้ว<br/>
+            คุณสามารถบันทึกรูปเพื่อนำไปปรึกษาช่างทำผมได้ทันที
+          </p>
+        </div>
+
+      {/* ── Action Buttons (Normal Flow) ── */}
+      <div className="pt-4 px-1">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Button
             type="button"
             variant="secondary"
-            className="h-14 text-sm font-bold rounded-2xl"
+            className="h-14 text-sm font-bold rounded-2xl border"
             onClick={() => void onClearCacheAndReanalyze()}
             disabled={isReanalyzing}
           >
@@ -103,22 +137,22 @@ export function AnalysisGraphicDashboard({
             )}
           </Button>
           <Button
-            type="button"
-            variant="outline"
-            className="h-14 text-base font-bold rounded-2xl"
-            disabled={isReanalyzing}
-            onClick={() => void downloadImage(image, `${sanitizeFilenamePart("hair-analysis")}.png`)}
+            className="h-14 text-base font-bold rounded-2xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 shadow-sm"
+            disabled={isDownloading || isReanalyzing}
+            onClick={handleDownload}
           >
-            <Download className="h-5 w-5 mr-2" /> Download
-          </Button>
-          <Button
-            className="h-14 text-base font-bold rounded-2xl"
-            disabled={isReanalyzing}
-            onClick={onReset}
-          >
-            <RefreshCw className="h-5 w-5 mr-2" /> New Photo
+            {isDownloading ? (
+              <>
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Downloading
+              </>
+            ) : (
+              <>
+                <Download className="h-5 w-5 mr-2" /> Download
+              </>
+            )}
           </Button>
         </div>
+      </div>
       </div>
     </div>
   );

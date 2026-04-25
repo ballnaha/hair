@@ -139,8 +139,8 @@ export const SALON_STYLE_CATALOG: SalonStyle[] = [
     name: "Short Mullet",
     label: "มัลเล็ตสั้น",
     gender: "male",
-    previewImage: "https://images.unsplash.com/photo-1522556189639-b150d8a2d7c2?w=800&q=80&fit=crop",
-    referenceImage: "https://images.unsplash.com/photo-1522556189639-b150d8a2d7c2?w=1200&q=80&fit=crop",
+    previewImage: "https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=800&q=80&fit=crop",
+    referenceImage: "https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=1200&q=80&fit=crop",
     prompt: "Create a soft short mullet with extra length at the back and a fashion-forward layered outline.",
   },
   {

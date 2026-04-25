@@ -43,6 +43,29 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unknown error";
 }
 
+function getErrorStatus(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return 500;
+  }
+
+  const status = (error as { status?: unknown }).status;
+  return typeof status === "number" ? status : 500;
+}
+
+function getErrorDetail(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return null;
+  }
+
+  const body = (error as { body?: unknown }).body;
+  if (!body || typeof body !== "object") {
+    return null;
+  }
+
+  const detail = (body as { detail?: unknown }).detail;
+  return detail ?? null;
+}
+
 function extractImageUrl(result: FalEditResponse) {
   return (
     result.data?.images?.[0]?.url ||
@@ -124,9 +147,15 @@ export async function POST(request: Request) {
     });
   } catch (error: unknown) {
     console.error("Analyze graphic API Error:", error);
+    const detail = getErrorDetail(error);
+    const status = getErrorStatus(error);
+
     return NextResponse.json(
-      { error: getErrorMessage(error) || "Failed to generate analysis graphic" },
-      { status: 500 }
+      {
+        error: getErrorMessage(error) || "Failed to generate analysis graphic",
+        detail,
+      },
+      { status }
     );
   }
 }

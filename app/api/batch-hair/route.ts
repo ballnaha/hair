@@ -43,6 +43,12 @@ interface GeneratedStyle {
   image: string | null;
 }
 
+interface FailedStyle {
+  id: string;
+  name: string;
+  error: string;
+}
+
 type BatchHairJobStatus = "processing" | "completed" | "failed";
 
 interface BatchHairJob {
@@ -51,6 +57,7 @@ interface BatchHairJob {
   status: BatchHairJobStatus;
   model?: string;
   selected: GeneratedStyle[];
+  failures?: FailedStyle[];
   completedCount: number;
   totalCount: number;
   error?: string;
@@ -76,6 +83,37 @@ globalForBatchHair.__batchHairJobKeys = batchHairJobKeys;
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unknown error";
+}
+
+function getErrorDetailMessage(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return null;
+  }
+
+  const body = (error as { body?: unknown }).body;
+  if (!body || typeof body !== "object") {
+    return null;
+  }
+
+  const detail = (body as { detail?: unknown }).detail;
+  if (!Array.isArray(detail) || detail.length === 0) {
+    return null;
+  }
+
+  const first = detail[0];
+  if (!first || typeof first !== "object") {
+    return null;
+  }
+
+  const message = (first as { msg?: unknown }).msg;
+  return typeof message === "string" && message.trim() ? message : null;
+}
+
+function formatStyleFailure(styleName: string, error: unknown) {
+  const message = getErrorMessage(error);
+  const detail = getErrorDetailMessage(error);
+  const reason = detail && detail !== message ? `${message} (${detail})` : message;
+  return `Failed to generate ${styleName}: ${reason}`;
 }
 
 function extractImageUrl(result: FalEditResponse) {
@@ -142,14 +180,21 @@ function createRequestCacheKey(image: string, selectedStyleIds: string[]) {
 }
 
 function createJobResponse(job: BatchHairJob, cached = false) {
+  const hasMissingGeneratedImage = job.selected.some((style) => !style.image);
+  const status = job.status === "completed" && hasMissingGeneratedImage ? "failed" : job.status;
+  const failures = job.failures?.filter((failure) => failure.error.trim().length > 0) ?? [];
+
   return {
     jobId: job.id,
-    status: job.status,
+    status,
     model: job.model,
-    selected: job.status === "completed" ? job.selected : undefined,
+    selected: status === "completed" ? job.selected : undefined,
+    failures: failures.length > 0 ? failures : undefined,
     completedCount: job.completedCount,
     totalCount: job.totalCount,
-    error: job.error,
+    error:
+      job.error
+      ?? (failures[0]?.error || (status === "failed" ? "Failed to generate one or more hairstyles" : undefined)),
     cached,
   };
 }
@@ -166,6 +211,7 @@ async function runBatchHairJob(
   }
 
   const results: Array<GeneratedStyle | undefined> = new Array(selectedStyles.length);
+  const failures: FailedStyle[] = [];
 
   try {
     let nextIndex = 0;
@@ -198,14 +244,25 @@ async function runBatchHairJob(
           });
 
           const imageUrl = extractImageUrl(result as FalEditResponse);
+          if (!imageUrl) {
+            throw new Error("fal.ai did not return a generated hairstyle image");
+          }
+
           results[index] = createGeneratedStyle(style, imageUrl || null);
         } catch (error: unknown) {
-          console.error(`Failed: ${style.name}:`, getErrorMessage(error));
+          const formattedError = formatStyleFailure(style.name, error);
+          console.error(`Failed: ${style.name}:`, formattedError);
+          failures.push({
+            id: style.id,
+            name: style.name,
+            error: formattedError,
+          });
           results[index] = createGeneratedStyle(style, null);
         }
 
         const completed = results.filter((item): item is GeneratedStyle => item !== undefined);
         job.selected = completed;
+        job.failures = failures.slice();
         job.completedCount = completed.length;
         job.updatedAt = Date.now();
         job.expiresAt = job.updatedAt + BATCH_JOB_TTL_MS;
@@ -218,8 +275,14 @@ async function runBatchHairJob(
     job.status = "completed";
     job.model = FAL_HAIRSTYLE_MODEL;
     job.selected = results.filter((item): item is GeneratedStyle => item !== undefined);
+    job.failures = failures;
     job.updatedAt = Date.now();
     job.expiresAt = job.updatedAt + BATCH_JOB_TTL_MS;
+
+    if (job.selected.length !== selectedStyles.length || job.selected.some((style) => !style.image)) {
+      job.status = "failed";
+      job.error = failures[0]?.error || "Failed to generate one or more hairstyles";
+    }
   } catch (error: unknown) {
     job.status = "failed";
     job.error = getErrorMessage(error);
@@ -299,6 +362,7 @@ export async function POST(request: Request) {
       cacheKey,
       status: "processing",
       selected: [],
+      failures: [],
       completedCount: 0,
       totalCount: selectedStyles.length,
       createdAt: now,

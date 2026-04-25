@@ -192,7 +192,7 @@ export function AnalysisDashboard({ data, userImage, onReset, generationTime }: 
   const [selectedStyleId, setSelectedStyleId] = useState<string | null>(generated?.selected.find((style) => style.image)?.id ?? generated?.selected[0]?.id ?? null);
 
   const selectedStyle = generated?.selected.find((style) => style.id === selectedStyleId) ?? generated?.selected[0] ?? null;
-  const selectedStylePreview = selectedStyle?.image ?? selectedStyle?.previewImage ?? selectedStyle?.referenceImage ?? null;
+  const selectedStylePreview = selectedStyle?.image ?? null;
 
   const selectedStyleCachePrefix = selectedStyle?.id ?? "default";
   const selectedStyleCacheScope = `${COLOR_PREVIEW_CACHE_VERSION}:${selectedStyleCachePrefix}`;
@@ -360,7 +360,7 @@ export function AnalysisDashboard({ data, userImage, onReset, generationTime }: 
             {/* Generated styles */}
             {generated.selected.map((style) => {
               const isActive = style.id === selectedStyle?.id;
-              const displayImage = style.image ?? style.previewImage ?? style.referenceImage;
+              const displayImage = style.image;
               return (
                 <div key={style.id} className="flex flex-col gap-1.5">
                   <button
